@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #06060d;
+  color: #e7e7f0;
+  font-family: 'General Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+@layer components {
+  /* Frosted glass card used throughout the app. */
+  .glass {
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.07),
+      rgba(255, 255, 255, 0.02)
+    );
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow:
+      0 20px 60px -20px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center rounded-full px-6 py-3
+      font-sans font-medium text-ink transition-transform duration-200
+      active:scale-95 disabled:opacity-50 disabled:active:scale-100;
+    background: linear-gradient(120deg, #a78bfa, #f0abfc 55%, #818cf8);
+    box-shadow: 0 10px 30px -8px rgba(167, 139, 250, 0.6);
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-base
+      text-white outline-none transition focus:border-violet-400/70
+      focus:ring-2 focus:ring-violet-500/30 placeholder:text-white/30;
+  }
+}
+
+/* Animated gradient-mesh background layers. */
+.bg-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 15% 10%, rgba(129, 140, 248, 0.28), transparent 70%),
+    radial-gradient(55% 45% at 85% 20%, rgba(236, 72, 153, 0.22), transparent 70%),
+    radial-gradient(60% 55% at 50% 100%, rgba(45, 212, 191, 0.18), transparent 70%),
+    #06060d;
+}
+
+.bg-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+}
+
+/* Fine grain overlay to keep the gradients from banding. */
+.bg-grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection {
+  background: rgba(167, 139, 250, 0.4);
+}
