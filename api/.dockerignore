@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+test
+**/*.spec.ts
+.eslintrc.js
+.prettierrc
+.git
+Dockerfile
+.dockerignore
+npm-debug.log
