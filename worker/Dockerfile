@@ -1,0 +1,20 @@
+# ---------- build stage ----------
+FROM node:20-alpine AS build
+WORKDIR /app
+RUN corepack enable
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY tsconfig.json ./
+COPY src ./src
+RUN pnpm build && pnpm prune --prod
+
+# ---------- runtime stage ----------
+FROM node:20-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY package.json ./
+USER node
+EXPOSE 4100
+CMD ["node", "dist/index.js"]

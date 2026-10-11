@@ -1,0 +1,7 @@
+node_modules
+dist
+**/*.spec.ts
+.eslintrc.js
+.git
+Dockerfile
+.dockerignore
