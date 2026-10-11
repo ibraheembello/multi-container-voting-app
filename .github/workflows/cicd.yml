@@ -1,0 +1,113 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/ibraheembello/multi-container-voting-app
+
+jobs:
+  # ---------- CI: lint + unit tests + frontend build ----------
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, dir: api, cmd: 'pnpm lint && pnpm test' }
+          - { name: worker, dir: worker, cmd: 'pnpm lint && pnpm test' }
+          - { name: web, dir: web, cmd: 'pnpm lint && pnpm build' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Install (frozen lockfile)
+        working-directory: ${{ matrix.dir }}
+        run: pnpm install --frozen-lockfile
+      - name: Lint, test / build
+        working-directory: ${{ matrix.dir }}
+        run: ${{ matrix.cmd }}
+
+  # ---------- Build & push images to GHCR (only on main) ----------
+  build-and-push:
+    name: Build & push (${{ matrix.service }})
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api, worker, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------- Deploy to the EC2 host over SSH ----------
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+      - name: Copy deployment files
+        run: |
+          scp -o StrictHostKeyChecking=no -i ~/.ssh/id_deploy \
+            docker-compose.prod.yml deploy/remote-deploy.sh \
+            ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/voting/
+      - name: Roll out
+        run: |
+          IMAGE_TAG="sha-$(echo '${{ github.sha }}' | cut -c1-7)"
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_deploy ubuntu@${{ secrets.EC2_HOST }} \
+            "IMAGE_TAG='$IMAGE_TAG' \
+             GHCR_USER='${{ github.actor }}' \
+             GHCR_TOKEN='${{ secrets.GITHUB_TOKEN }}' \
+             bash /home/ubuntu/voting/remote-deploy.sh"
+      - name: Verify public endpoint
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://voting.ibraheembello.com/api/health || true)
+            echo "attempt $i -> $code"
+            [ "$code" = "200" ] && { echo "Live over HTTPS"; exit 0; }
+            sleep 5
+          done
+          echo "Public health check did not pass"; exit 1
