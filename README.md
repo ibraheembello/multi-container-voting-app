@@ -86,6 +86,16 @@ cache.
 
 ---
 
+## Screenshots
+
+| Sign in | Ballot |
+| --- | --- |
+| ![Landing](docs/app-landing.png) | ![Ballot](docs/app-ballot.png) |
+
+| Live results | Admin dashboard |
+| --- | --- |
+| ![Results](docs/app-results.png) | ![Admin](docs/app-admin.png) |
+
 ## Project structure
 
 ```
