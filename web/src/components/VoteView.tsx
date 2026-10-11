@@ -144,7 +144,7 @@ export default function VoteView({
             >
               <div className="mb-4 flex items-center justify-center gap-2 text-sm text-emerald-300">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                Thanks for voting — live results
+                Thanks for voting. Live results
               </div>
               {results ? (
                 <ResultsBars
